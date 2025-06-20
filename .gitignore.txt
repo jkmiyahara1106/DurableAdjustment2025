@@ -1,0 +1,34 @@
+# MATLAB autosave files
+*.asv
+*.m~
+*.mlx~
+*.mex*
+*.slx.autosave
+
+# Simulink cache files
+slprj/
+
+# MATLAB session info
+#*.mat
+
+# MATLAB figures (you might want to keep some)
+*.fig
+
+# MATLAB published output
+html/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temporary files
+*.tmp
+*.temp
+
+# Log files
+*.log
+
+# Keep specific important files
+#!data/processed/*.mat
+#!results/baseline_results.mat
