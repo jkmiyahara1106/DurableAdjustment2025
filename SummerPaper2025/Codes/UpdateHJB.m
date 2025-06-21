@@ -1,15 +1,15 @@
 function [Vnew,Ahjb,Akfe,adj_hazard] = UpdateHJB(V,param,grids)
 %UpdateHJB Update HJB
 
-
+expos = param.risky_share*param.sigma;
 % forward difference
 dVf(1:param.na-1,1) = max((V(2:param.na)-V(1:param.na-1))/grids.da,param.mindV);
-exposure_f = param.risky_share*grids.agrid*param.sigma;
-dVf(param.na,1) = max(param.u1(param.r.*grids.agrid(param.na)+(param.r_risk-param.r)*exposure_f(param.na)/param.sigma),param.mindV); %state constraint
+
+dVf(param.na,1) = max(param.u1(param.r.*grids.agrid(param.na)+(param.r_risk-param.r)*exposure(param.na)/param.sigma),param.mindV); %state constraint
 
 % backward difference
 dVb(2:param.na,1) = max((V(2:param.na)-V(1:param.na-1))./grids.da,param.mindV);
-exposure_b = param.risky_share*grids.agrid*param.sigma;
+%exposure_b = param.risky_share*grids.agrid*param.sigma;
 dVb(1,1) = max(param.u1(param.r.*grids.agrid(1) + (param.r_risk-param.r)*exposure_b(1)/param.sigma),param.mindV); %state constraint
 
 % Central difference second derivative
@@ -17,8 +17,8 @@ d2V = min((dVf - dVb) /grids.da,-param.mindV);
 
 %consumption and savings with forward difference
 conf = param.u1inv(dVf);
-savf = param.r.*grids.agrid  + (param.r_risk-param.r)*exposure_f/param.sigma - conf;
-Hf = param.u(conf) + dVf.*savf + d2V/2.*exposure_f.^2;
+savf = param.r.*grids.agrid  + (param.r_risk-param.r)*exposure/param.sigma - conf;
+Hf = param.u(conf) + dVf.*savf + d2V/2.*exposure.^2;
 
 %consumption and savings with backward difference
 conb = param.u1inv(dVb);
@@ -26,7 +26,7 @@ savb = param.r.*grids.agrid  + (param.r_risk-param.r)*exposure_b/param.sigma - c
 Hb = param.u(conb) + dVb.*savb + d2V/2.*exposure_b.^2;
 
 %consumption and derivative with adot = 0
-exposure_0 = param.risky_share*grids.agrid*param.sigma;
+%exposure_0 = param.risky_share*grids.agrid*param.sigma;
 con0 = param.r.*grids.agrid  + (param.r_risk-param.r)*exposure_0/param.sigma;
 dV0 = param.u1(con0);
 H0 = param.u(con0) + + d2V/2.*exposure_0.^2;
@@ -41,7 +41,7 @@ I0 = 1-Ib-If;
 
 %consumption, savings and utility
 con   = conf.*If + conb.*Ib + con0.*I0;
-expos = exposure_f.*If + exposure_b.*Ib + exposure_0.*I0;
+%expos = exposure.*If + exposure_b.*Ib + exposure_0.*I0;
 sav   = savf.*If + savb.*Ib;    
 util  = param.u(con);
 

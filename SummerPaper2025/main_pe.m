@@ -9,14 +9,14 @@ addpath("Results\")
 %%
 % INITIALIZE VALUE FUNCTION
 
-%Vguess = zeros(na,1);
-%Vguess(:) = u(r.*agrid + (r_risk-r)*risky_share.*agrid)./rho;
+Vguess = zeros(na,1);
+Vguess(:) = u(r.*exp(agrid) + (r_risk-r)*risky_share.*exp(agrid))./rho;
 param = SetParameters;
 grids = MakeGrids(param);
 
 % ITERATE ON VALUE FUNCTION
-load('./Results/Vguess2.mat')
-%V    = Vguess;
+%load('./Results/Vguess2.mat')
+V    = Vguess;
 Vdiff = 1;
 iter = 0;
 dVf= 0*V;
