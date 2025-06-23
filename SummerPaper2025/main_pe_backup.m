@@ -28,11 +28,24 @@ r           = 0.01/4; %quarterly
 r_risk      = 0.07/4; %quarterly
 sigma2      = 0.1655^2/4; %quarterly
 sigma       = sqrt(sigma2);
+risky_share = 0.7;
 
 % transaction costs
 prop_cost = 0.05;
-adj_arriv = 365/4; % set the hjb as initial guess
-risky_share = 0.7;
+adj_arriv_u = 1; % adjust up opportunities
+adj_arriv_d = 1; % adjust down opportunities 
+psi_val_u = [ 0; 5; 10; 20 ; 30 ; 50; 100];
+pmf_psi_u = [ 0; 0.2; 0.2; 0.2; 0.2; 0.1; 0.1];
+cdf_psi_u = cumsum(pmf_psi_u);
+psi_cum_u = cumsum(psi_val_u.*pmf_psi_u);
+
+dist_up.vals = psi_val_u*1000;
+dist_up.cdf = cdf_psi_u;
+dist_up.costCum =  psi_cum_u*1000;
+
+dist_down.vals = psi_val_u/10;
+dist_down.cdf = cdf_psi_u;
+dist_down.costCum =  psi_cum_u/10;
 
 % asset grids
 nx          = 100; %100;
@@ -148,16 +161,25 @@ while iter <= maxiter_hjb && Vdiff>tol_hjb
     util  = u(con,xgrid);
 
     % Impulse Hamiltonian
-    iH_fun = @(dv) adj_arriv*(dv>0).*dv;
     % find optimum and maximized continuation value
     M = V./( (1+exp(xgrid)) .^ (1-risk_aver) ) ;
     [max_val , ind_max] = max(M);
     % define benefit of adjusting
     dval = (exp(xgrid)-prop_cost+1).^(1-risk_aver).*max_val-V;
     % compute impulse Hamiltonian
-    iH = iH_fun(dval);
+    
     % compute adjustment hazard
-    adj_hazard = adj_arriv.*(dval>0);
+    up = xgrid<xgrid(ind_max); %adjust up
+    down = xgrid>xgrid(ind_max); %adjust down
+    
+    ind_bar_d = find_ind(dist_down.vals,dval); %index that truncates dist
+    ind_bar_u = find_ind(dist_up.vals,dval); %index that truncates dist
+    
+    adj_hazard = adj_arriv_d.*down.*dist_down.cdf(ind_bar_d) + ...
+        adj_arriv_u.*up.*dist_up.cdf(ind_bar_u);
+    
+    util_cost = adj_arriv_d.*down.*dist_down.costCum(ind_bar_d) + ...
+        adj_arriv_u.*up.*dist_up.costCum(ind_bar_u);
 
     %construct A matrix: tri-diagonal elements
     Alowdiag = -Ib.*driftb./dx + expos.^2/2/dx^2;
@@ -185,7 +207,7 @@ while iter <= maxiter_hjb && Vdiff>tol_hjb
     B = (rho + 1./delta_hjb)*speye(nx) - Ahjb;
         
     % solve linear system
-    Vnew = B \ (util + V./delta_hjb);
+    Vnew = B \ (util - util_cost + V./delta_hjb);
    
     Vdiff = max(abs(Vnew-V));
     if Display >=1
@@ -273,7 +295,7 @@ if MakePlots ==1
     title('Savings: Zoomed');
     
     subplot(2,4,5)
-    plot(xgrid,V,'b-','LineWidth',1);
+    plot(xgrid,adj_hazard,'b-','LineWidth',1);
     grid;
     xlim([borrow_lim xmax]);
     title('Value Function');
