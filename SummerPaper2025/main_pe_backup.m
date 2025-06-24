@@ -5,8 +5,8 @@
 clear;
 close all;
 
-addpath('Results\')
-addpath('Codes\')
+addpath('Results')
+addpath('Codes')
 %addpath('Figures\')
 
 %% OPTIONS
@@ -31,7 +31,7 @@ sigma       = sqrt(sigma2);
 risky_share = 0.7;
 
 % transaction costs
-prop_cost = 0.05;
+prop_cost = 0.04;
 adj_arriv_u = 1; % adjust up opportunities
 adj_arriv_d = 1; % adjust down opportunities 
 psi_val_u = [ 0; 5; 10; 20 ; 30 ; 50; 100];
