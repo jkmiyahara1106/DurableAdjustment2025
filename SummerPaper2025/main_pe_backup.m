@@ -39,13 +39,13 @@ pmf_psi_u = [ 0; 0.2; 0.2; 0.2; 0.2; 0.1; 0.1];
 cdf_psi_u = cumsum(pmf_psi_u);
 psi_cum_u = cumsum(psi_val_u.*pmf_psi_u);
 
-dist_up.vals = psi_val_u*1000;
+dist_up.vals = psi_val_u*100;
 dist_up.cdf = cdf_psi_u;
-dist_up.costCum =  psi_cum_u*1000;
+dist_up.costCum =  psi_cum_u*100;
 
-dist_down.vals = psi_val_u/10;
+dist_down.vals = psi_val_u*100;
 dist_down.cdf = cdf_psi_u;
-dist_down.costCum =  psi_cum_u/10;
+dist_down.costCum =  psi_cum_u*100;
 
 % asset grids
 nx          = 100; %100;
@@ -128,8 +128,8 @@ while iter <= maxiter_hjb && Vdiff>tol_hjb
     dVb(1) = max(u1(c0,xgrid(1)),mindV); %state constraint
     
     % Central difference second derivative
-    %d2V = min((dVf - dVb) /dx,-mindV);
-
+    d2V = min((dVf - dVb) /dx,-mindV);
+    
     %consumption and savings with forward difference
     conf = u1inv(dVf,xgrid);
     driftf = r  + (r_risk-r)*exposure_f/sigma - exposure_f.^2/2 - conf;
@@ -143,7 +143,7 @@ while iter <= maxiter_hjb && Vdiff>tol_hjb
     %consumption and derivative with adot = 0
     exposure_0 = risky_share*sigma;
     con0 = r  + (r_risk-r)*exposure_0/sigma - exposure_0.^2/2;
-    %dV0 = u1(con0);
+    dV0 = u1(con0,xgrid);
     H0 = u(con0,xgrid);
     
     % choice of forward or backward differences based on sign of drift    
@@ -157,7 +157,9 @@ while iter <= maxiter_hjb && Vdiff>tol_hjb
     %consumption, savings and utility
     con   = conf.*If + conb.*Ib + con0.*I0;
     expos = exposure_f.*If + exposure_b.*Ib + exposure_0.*I0;
-    drift   = driftf.*If + driftb.*Ib;    
+    dV = dVb.*Ib + dVf.*If + dV0.*I0;
+    drift   = driftf.*If + driftb.*Ib; 
+    optimal_expos = (r_risk-r).*dV./(sigma2.*(dV-d2V));
     util  = u(con,xgrid);
 
     % Impulse Hamiltonian
@@ -252,6 +254,7 @@ end
 gmat    = gvecadj./xdelta;
 mean_a = sum(xgrid.*gvecadj);
 freq_adj = sum(adj_hazard.*gvecadj);
+dist_adj = adj_hazard.*gvecadj/freq_adj;
 disp(mean_a)
 disp(freq_adj)
 
@@ -269,36 +272,36 @@ if MakePlots ==1
 
     % savings policy function
     subplot(2,4,2);
-    plot(xgrid,drift(:),'b-','LineWidth',1);
+    plot(xgrid,optimal_expos(:),'b-','LineWidth',1);
     hold on;
-    plot(xgrid,zeros(nx,1),'k','LineWidth',0.5);
+    plot(xgrid,risky_share*ones(nx,1),'k','LineWidth',0.5);
     hold off;
     grid;
     xlim([borrow_lim xmax]);
-    title('Savings Policy Function');
+    title('Optimal Portfolio Function');
     
     % consumption policy function: zoomed in
-    subplot(2,4,3);
-    plot(xgrid,con(:,1),'o-b','LineWidth',2);
+    subplot(2,4,3:4);
+    plot(log(exp(xgrid)-prop_cost+1) - log(exp(xgrid(ind_max))+1),dist_adj,'-b','LineWidth',2);
     grid;
-    xlim(borrow_lim + [0 1]);
-    title('Consumption: Zoomed');
+    %xlim(borrow_lim + [0 1]);
+    title('Distribution of log Durable Adjustment');
     
-    % savings policy function: zoomed in
-    subplot(2,4,4);
-    plot(xgrid,drift(:,1),'o-b','LineWidth',2);
-    hold on;
-    plot(xgrid,zeros(nx,1),'k','LineWidth',0.5);
-    hold off;
-    grid;
-    xlim(borrow_lim + [0 1]);
-    title('Savings: Zoomed');
+    % % savings policy function: zoomed in
+    % subplot(2,4,4);
+    % plot(xgrid,drift(:,1),'o-b','LineWidth',2);
+    % hold on;
+    % plot(xgrid,zeros(nx,1),'k','LineWidth',0.5);
+    % hold off;
+    % grid;
+    % xlim(borrow_lim + [0 1]);
+    % title('Savings: Zoomed');
     
     subplot(2,4,5)
     plot(xgrid,adj_hazard,'b-','LineWidth',1);
     grid;
     xlim([borrow_lim xmax]);
-    title('Value Function');
+    title('Hazard function');
     
     subplot(2,4,6:8)
     plot(xgrid,gmat,'b-','LineWidth',1);
