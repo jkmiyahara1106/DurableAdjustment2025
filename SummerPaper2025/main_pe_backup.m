@@ -29,7 +29,7 @@ r_risk      = 0.07/4; %quarterly
 sigma2      = 0.1655^2/4; %quarterly
 sigma       = sqrt(sigma2);
 risky_share = 0.7;
-margin_prop = 3;
+margin_prop = 1.3;
 
 % transaction costs
 prop_cost = 0.05;
@@ -49,9 +49,9 @@ dist_down.cdf = cdf_psi_u;
 dist_down.costCum =  psi_cum_u*100;
 
 % asset grids
-nx          = 100; %100;
-xmax        = 4;%log(20); %400; 
-borrow_lim  = -2;%log(0.1);
+nx          = 500; %100;
+xmax        = 5;%log(20); %400; 
+borrow_lim  = -3;%log(0.1);
 agrid_par   = 1; %1 for linear, 0 for L-shaped
 
 % computation
@@ -110,8 +110,8 @@ c0 = r;
 Vguess(:) = u(c0,xgrid)./rho;
 
 % ITERATE ON VALUE FUNCTION
-load('Vguess.mat')
-%V    = Vguess;
+%load('Vguess.mat')
+V    = Vguess;
 Vdiff = 1;
 iter = 0;
 dVf= 0*V;
@@ -317,7 +317,16 @@ if MakePlots ==1
     xlim([borrow_lim xmax]);
     title('Hazard function');
     
-    subplot(2,4,6:8)
+    subplot(2,4,6)
+    plot(xgrid,log(max(dval,0)),'b-','LineWidth',1); hold on
+    xline(xgrid(ind_max), 'r--')
+    grid;
+    hold off
+    %ylim([0 ])
+    xlim([borrow_lim xmax]);
+    title('Log value of adjusting');
+    
+    subplot(2,4,7:8)
     plot(xgrid,gmat,'b-','LineWidth',1);
     grid;
     xlim([borrow_lim xmax]);
