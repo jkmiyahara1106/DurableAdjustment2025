@@ -29,9 +29,10 @@ r_risk      = 0.07/4; %quarterly
 sigma2      = 0.1655^2/4; %quarterly
 sigma       = sqrt(sigma2);
 risky_share = 0.7;
+margin_prop = 3;
 
 % transaction costs
-prop_cost = 0.04;
+prop_cost = 0.05;
 adj_arriv_u = 1; % adjust up opportunities
 adj_arriv_d = 1; % adjust down opportunities 
 psi_val_u = [ 0; 5; 10; 20 ; 30 ; 50; 100];
@@ -57,7 +58,7 @@ agrid_par   = 1; %1 for linear, 0 for L-shaped
 maxiter_hjb = 100;
 tol_hjb     = 1.0e-7;
 delta_hjb   = 1.0e8;
-mindV = 1.0e-8;
+mindV = 1.0e-10;
 
 maxiter_kfe = 1000;
 tol_kfe     = 1.0e-8;
@@ -97,11 +98,15 @@ end
 
 u1 = @(c,x) alpha*c.^(-zeta).*exp((1-zeta)*x); % marginal utility
 u1inv = @(vp,x) (vp.*exp(-(1-zeta)*x)/alpha).^(-1./zeta); % inverse of marginal utility
+opt_expos = @(dv,d2v) min((r_risk-r).*sigma.*dv./(sigma2.*max(dv-d2v,mindV)),margin_prop*sigma);
+opt_expos_uncon = @(dv,d2v) (r_risk-r).*sigma.*dv./(sigma2.*max(dv-d2v,mindV));
+int_income = @(expos) r + (r_risk-r)*expos/sigma - expos.^2/2;
+bdgt_const = @(dv,d2v,x) int_income(opt_expos_uncon(max(dv,mindV),d2v)) - u1inv(max(dv,mindV),x) ;
 
 %% INITIALIZE VALUE FUNCTION
 
 Vguess = zeros(nx,1);
-c0 = r + (r_risk-r)*risky_share - (risky_share.*sigma).^2/2;
+c0 = r;
 Vguess(:) = u(c0,xgrid)./rho;
 
 % ITERATE ON VALUE FUNCTION
@@ -117,34 +122,42 @@ while iter <= maxiter_hjb && Vdiff>tol_hjb
     
     % forward difference
     dVf(1:nx-1) = max((V(2:nx)-V(1:nx-1))/dx,mindV);
-    exposure_f = risky_share*sigma;
-    c0 = r + (r_risk-r)*exposure_f/sigma - exposure_f.^2/2;
+    c0 = 5*r;
     dVf(nx) = max(u1(c0,xgrid(nx)),mindV); %state constraint
-
     % backward difference
     dVb(2:nx) = max((V(2:nx)-V(1:nx-1))./dx,mindV);
-    exposure_b = risky_share*sigma;
-    c0 = r + (r_risk-r)*exposure_b/sigma - exposure_b.^2/2;
+    c0 = r;
     dVb(1) = max(u1(c0,xgrid(1)),mindV); %state constraint
-    
+
     % Central difference second derivative
     d2V = min((dVf - dVb) /dx,-mindV);
     
+    % forward portfolio 
+    exposure_f = opt_expos(dVf,d2V);
+    
+    % backward portfolio
+    exposure_b = opt_expos(dVb,d2V);
+
     %consumption and savings with forward difference
     conf = u1inv(dVf,xgrid);
-    driftf = r  + (r_risk-r)*exposure_f/sigma - exposure_f.^2/2 - conf;
-    Hf = u(conf,xgrid) + dVf.*driftf;
+    driftf = int_income(exposure_f) - conf;
+    Hf = u(conf,xgrid) + dVf.*driftf + d2V.*exposure_f.^2/2;
     
     %consumption and savings with backward difference
     conb = u1inv(dVb,xgrid);
-    driftb = r  + (r_risk-r)*exposure_b/sigma - exposure_b.^2/2 -conb;
-    Hb = u(conb,xgrid) + dVb.*driftb;
+    driftb = int_income(exposure_b) -conb;
+    Hb = u(conb,xgrid) + dVb.*driftb + d2V.*exposure_b.^2/2;
     
     %consumption and derivative with adot = 0
-    exposure_0 = risky_share*sigma;
-    con0 = r  + (r_risk-r)*exposure_0/sigma - exposure_0.^2/2;
-    dV0 = u1(con0,xgrid);
-    H0 = u(con0,xgrid);
+    dV0 = dVf*0;
+    %find dV consistent with zero drift
+    for it = 1:nx
+    dV0(it) = fzero( @(dv) bdgt_const(dv,d2V(it),xgrid(it)),dVf(it));
+    end
+    exposure_0 = opt_expos(dV0,d2V);
+    con0 = int_income(exposure_0);
+   %dV0 = u1(con0,xgrid);
+    H0 = u(con0,xgrid) +  d2V.*exposure_0.^2/2;
     
     % choice of forward or backward differences based on sign of drift    
     Ineither = (1-(driftf>0)) .* (1-(driftb<0));
@@ -159,7 +172,7 @@ while iter <= maxiter_hjb && Vdiff>tol_hjb
     expos = exposure_f.*If + exposure_b.*Ib + exposure_0.*I0;
     dV = dVb.*Ib + dVf.*If + dV0.*I0;
     drift   = driftf.*If + driftb.*Ib; 
-    optimal_expos = (r_risk-r).*dV./(sigma2.*(dV-d2V));
+
     util  = u(con,xgrid);
 
     % Impulse Hamiltonian
@@ -264,17 +277,18 @@ if MakePlots ==1
     
     % consumption policy function
     subplot(2,4,1);
-    plot(xgrid,con(:),'b-','LineWidth',1);
+    plot(xgrid,drift(:),'b-','LineWidth',1);
     grid;
     xlim([borrow_lim xmax]);
-    title('Consumption Policy Function');
+    title('Drift Policy Function');
     %legend('Lowest income state','Highest income state');
 
     % savings policy function
     subplot(2,4,2);
-    plot(xgrid,optimal_expos(:),'b-','LineWidth',1);
+    plot(xgrid,expos(:)/sigma,'b-','LineWidth',1);
     hold on;
-    plot(xgrid,risky_share*ones(nx,1),'k','LineWidth',0.5);
+    xline(xgrid(ind_max), 'r--') 
+    %plot(xgrid,risky_share*ones(nx,1),'k','LineWidth',0.5);
     hold off;
     grid;
     xlim([borrow_lim xmax]);
