@@ -6,9 +6,6 @@ param.MakePlots   = 1;
 param.ComputeMPC  = 0;
 param.IterateKFE  = 0;
 
-% Formulation in log w
-param.log_formulation = 1;
-
 % preferences
 param.risk_aver   = 3.5;
 param.rho         = 0.025/4; %0.01; %0.005275; %quarterly 
@@ -30,14 +27,9 @@ param.upper_bound_cost_fun = 100000;
 
 % asset grids
 param.na          = 500; %100;
-param.amax        = 20; %400; 
-param.borrow_lim  = 0.001;
-if param.log_formulation == 1
+param.amax        = log(20); %400; 
+param.borrow_lim  = log(0.001);
 param.agrid_par   = 1; %1 for linear, 0 for L-shaped
-end
-param.xmax = exp(param.amax);
-param.xborrow_lim = exp(param.borrow_lim);
-
 
 % computation
 param.maxiter_hjb = 300;
