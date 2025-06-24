@@ -29,29 +29,29 @@ r_risk      = 0.07/4; %quarterly
 sigma2      = 0.1655^2/4; %quarterly
 sigma       = sqrt(sigma2);
 risky_share = 0.7;
-margin_prop = 1.3;
+margin_prop = 1.2;
 
 % transaction costs
 prop_cost = 0.05;
-adj_arriv_u = 1; % adjust up opportunities
-adj_arriv_d = 1; % adjust down opportunities 
+adj_arriv_u = 90; % adjust up opportunities
+adj_arriv_d = 90; % adjust down opportunities 
 psi_val_u = [ 0; 5; 10; 20 ; 30 ; 50; 100];
 pmf_psi_u = [ 0; 0.2; 0.2; 0.2; 0.2; 0.1; 0.1];
 cdf_psi_u = cumsum(pmf_psi_u);
 psi_cum_u = cumsum(psi_val_u.*pmf_psi_u);
 
-dist_up.vals = psi_val_u*100;
+dist_up.vals = psi_val_u*0.1;
 dist_up.cdf = cdf_psi_u;
-dist_up.costCum =  psi_cum_u*100;
+dist_up.costCum =  psi_cum_u*0.1;
 
-dist_down.vals = psi_val_u*100;
+dist_down.vals = psi_val_u*0.001;
 dist_down.cdf = cdf_psi_u;
-dist_down.costCum =  psi_cum_u*100;
+dist_down.costCum =  psi_cum_u*0.001;
 
 % asset grids
 nx          = 500; %100;
-xmax        = 5;%log(20); %400; 
-borrow_lim  = -3;%log(0.1);
+xmax        = 4;%log(20); %400; 
+borrow_lim  = -2;%log(0.1);
 agrid_par   = 1; %1 for linear, 0 for L-shaped
 
 % computation
@@ -318,7 +318,7 @@ if MakePlots ==1
     title('Hazard function');
     
     subplot(2,4,6)
-    plot(xgrid,log(max(dval,0)),'b-','LineWidth',1); hold on
+    plot(xgrid,log(dval.*(dval>0)),'b-','LineWidth',1); hold on
     xline(xgrid(ind_max), 'r--')
     grid;
     hold off
