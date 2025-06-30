@@ -22,6 +22,7 @@ risk_aver   = 3.5;
 rho         = 0.025/4; %0.01; %0.005275; %quarterly 
 alpha       = 0.8; %share in non-durable
 zeta        = 1-alpha*(1-risk_aver);
+tolCons = 1.0e-10;
 
 %returns
 r           = 0.01/4; %quarterly
@@ -29,29 +30,47 @@ r_risk      = 0.07/4; %quarterly
 sigma2      = 0.1655^2/4; %quarterly
 sigma       = sqrt(sigma2);
 risky_share = 0.7;
-margin_prop = 1.2;
+marginProp = 1.2;
+homeEquity = 0.20;
+mtgSpread = 0.02/4;
 
 % transaction costs
-prop_cost = 0.05;
-adj_arriv_u = 90; % adjust up opportunities
-adj_arriv_d = 90; % adjust down opportunities 
-psi_val_u = [ 0; 5; 10; 20 ; 30 ; 50; 100];
-pmf_psi_u = [ 0; 0.2; 0.2; 0.2; 0.2; 0.1; 0.1];
+propCost = 0.05;
+defol = 2;
+
+if defol*propCost > homeEquity
+    disp('fees cannot be larger than home equity')
+end
+
+adj_arriv_u = 9; % adjust up opportunities
+adj_arriv_d = 12; % adjust down opportunities 
+psi_val_u = [ 0; exp(1); exp(3); exp(5) ; exp(6) ; exp(7); exp(10)];
+pmf_psi_u = [ .1; .2; .2; .2; .1; .1; .1];
 cdf_psi_u = cumsum(pmf_psi_u);
 psi_cum_u = cumsum(psi_val_u.*pmf_psi_u);
 
-dist_up.vals = psi_val_u*0.1;
+dist_up.vals = psi_val_u;
 dist_up.cdf = cdf_psi_u;
-dist_up.costCum =  psi_cum_u*0.1;
+dist_up.costCum =  psi_cum_u;
 
-dist_down.vals = psi_val_u*0.001;
+dist_down.vals = psi_val_u.*exp(-5);
 dist_down.cdf = cdf_psi_u;
-dist_down.costCum =  psi_cum_u*0.001;
+dist_down.costCum =  psi_cum_u.*exp(-5);
 
 % asset grids
 nx          = 500; %100;
 xmax        = 4;%log(20); %400; 
-borrow_lim  = -2;%log(0.1);
+
+if ~isreal(r+(r_risk-r)*marginProp - (sigma*marginProp)^2/2)
+    disp('interest income is negative')
+end
+
+if homeEquity==1
+    borrow_lim = -4; 
+else
+    borrow_lim  = log(1-homeEquity) + log(r+mtgSpread)-log(r+(r_risk-r)*marginProp - (sigma*marginProp)^2/2) + tolCons;
+end
+
 agrid_par   = 1; %1 for linear, 0 for L-shaped
 
 % computation
@@ -70,7 +89,6 @@ delta_mpc   = 0.01; %time steps for cumulative consumption
 mpcamount1  = 1.0e-10; %approximate thoeretical mpc
 mpcamount2  = 0.10; % ten percent of average income: approx $5000
     
-
 %% SET UP GRIDS
 
 % assets
@@ -98,10 +116,10 @@ end
 
 u1 = @(c,x) alpha*c.^(-zeta).*exp((1-zeta)*x); % marginal utility
 u1inv = @(vp,x) (vp.*exp(-(1-zeta)*x)/alpha).^(-1./zeta); % inverse of marginal utility
-opt_expos = @(dv,d2v) min((r_risk-r).*sigma.*dv./(sigma2.*max(dv-d2v,mindV)),margin_prop*sigma);
+opt_expos = @(dv,d2v) min((r_risk-r).*sigma.*dv./(sigma2.*max(dv-d2v,mindV)),marginProp*sigma);
 opt_expos_uncon = @(dv,d2v) (r_risk-r).*sigma.*dv./(sigma2.*max(dv-d2v,mindV));
-int_income = @(expos) r + (r_risk-r)*expos/sigma - expos.^2/2;
-bdgt_const = @(dv,d2v,x) int_income(opt_expos_uncon(max(dv,mindV),d2v)) - u1inv(max(dv,mindV),x) ;
+int_income = @(expos,x) r + (r_risk-r)*expos/sigma - expos.^2/2- (1-homeEquity)*(r+mtgSpread).*exp(-x);
+bdgt_const = @(dv,d2v,x) int_income(opt_expos_uncon(max(dv,mindV),d2v),x) - u1inv(max(dv,mindV),x) ;
 
 %% INITIALIZE VALUE FUNCTION
 
@@ -122,11 +140,12 @@ while iter <= maxiter_hjb && Vdiff>tol_hjb
     
     % forward difference
     dVf(1:nx-1) = max((V(2:nx)-V(1:nx-1))/dx,mindV);
-    c0 = 5*r;
+    c0 = int_income(marginProp*sigma,xgrid(nx));
     dVf(nx) = max(u1(c0,xgrid(nx)),mindV); %state constraint
+    
     % backward difference
     dVb(2:nx) = max((V(2:nx)-V(1:nx-1))./dx,mindV);
-    c0 = r;
+    c0 = int_income(marginProp*sigma,xgrid(1));
     dVb(1) = max(u1(c0,xgrid(1)),mindV); %state constraint
 
     % Central difference second derivative
@@ -140,12 +159,12 @@ while iter <= maxiter_hjb && Vdiff>tol_hjb
 
     %consumption and savings with forward difference
     conf = u1inv(dVf,xgrid);
-    driftf = int_income(exposure_f) - conf;
+    driftf = int_income(exposure_f,xgrid) - conf;
     Hf = u(conf,xgrid) + dVf.*driftf + d2V.*exposure_f.^2/2;
     
     %consumption and savings with backward difference
     conb = u1inv(dVb,xgrid);
-    driftb = int_income(exposure_b) -conb;
+    driftb = int_income(exposure_b,xgrid) -conb;
     Hb = u(conb,xgrid) + dVb.*driftb + d2V.*exposure_b.^2/2;
     
     %consumption and derivative with adot = 0
@@ -155,7 +174,7 @@ while iter <= maxiter_hjb && Vdiff>tol_hjb
     dV0(it) = fzero( @(dv) bdgt_const(dv,d2V(it),xgrid(it)),dVf(it));
     end
     exposure_0 = opt_expos(dV0,d2V);
-    con0 = int_income(exposure_0);
+    con0 = int_income(exposure_0,xgrid);
    %dV0 = u1(con0,xgrid);
     H0 = u(con0,xgrid) +  d2V.*exposure_0.^2/2;
     
@@ -177,15 +196,15 @@ while iter <= maxiter_hjb && Vdiff>tol_hjb
 
     % Impulse Hamiltonian
     % find optimum and maximized continuation value
-    M = V./( (1+exp(xgrid)) .^ (1-risk_aver) ) ;
+    M = V./( (homeEquity +exp(xgrid)) .^ (1-risk_aver) ) ;
     [max_val , ind_max] = max(M);
     % define benefit of adjusting
-    dval = (exp(xgrid)-prop_cost+1).^(1-risk_aver).*max_val-V;
+    dval = (exp(xgrid)-propCost+homeEquity ).^(1-risk_aver).*max_val-V;
     % compute impulse Hamiltonian
     
     % compute adjustment hazard
-    up = xgrid<xgrid(ind_max); %adjust up
-    down = xgrid>xgrid(ind_max); %adjust down
+    up = (xgrid<xgrid(ind_max)).*(dval>0); %adjust up
+    down = (xgrid>xgrid(ind_max)).*(dval>0); %adjust down
     
     ind_bar_d = find_ind(dist_down.vals,dval); %index that truncates dist
     ind_bar_u = find_ind(dist_up.vals,dval); %index that truncates dist
@@ -197,11 +216,11 @@ while iter <= maxiter_hjb && Vdiff>tol_hjb
         adj_arriv_u.*up.*dist_up.costCum(ind_bar_u);
 
     %construct A matrix: tri-diagonal elements
-    Alowdiag = -Ib.*driftb./dx + expos.^2/2/dx^2;
-    Adiag = -If.*driftf./dx + Ib.*driftb./dx-expos.^2/dx^2;
-        Adiag(1) = Adiag(1) + expos(1).^2/2/dx^2 - Ib(1).*driftb(1)./dx;
-        Adiag(end) = Adiag(end) + expos(end).^2/2/dx^2 + If(end).*driftf(end)./dx;
-    Aupdiag = If.*driftf./dx + expos.^2/2/dx^2;
+    Alowdiag = -Ib.*drift./dx + expos.^2/2/dx^2;
+    Adiag = -If.*drift./dx + Ib.*drift./dx-expos.^2/dx^2;
+        Adiag(1) = Adiag(1) + expos(1).^2/2/dx^2 - Ib(1).*drift(1)./dx;
+        Adiag(end) = Adiag(end) + expos(end).^2/2/dx^2 + If(end).*drift(end)./dx;
+    Aupdiag = If.*drift./dx + expos.^2/2/dx^2;
 
     %use spdiags to create A matrix 
     Ahjb = spdiags(Adiag(:),0,nx,nx) + ...
@@ -210,10 +229,12 @@ while iter <= maxiter_hjb && Vdiff>tol_hjb
     
     Akfe = Ahjb - spdiags(adj_hazard,0,nx,nx);
     Akfe(:,ind_max) = Akfe(:,ind_max) + adj_hazard;
-
+    %Akfe(1,ind_max) = Akfe(1,ind_max) + expos(1).^2/2/dx^2 - Ib(1).*drift(1)./dx;
+    
     Ahjb = Ahjb - spdiags(adj_hazard,0,nx,nx);
-    Ahjb(:,ind_max) = Ahjb(:,ind_max) + adj_hazard.*(exp(xgrid)-prop_cost+1).^(1-risk_aver)/((1+exp(xgrid(ind_max))) ^ (1-risk_aver) );
-
+    Ahjb(:,ind_max) = Ahjb(:,ind_max) + adj_hazard.*(exp(xgrid)-propCost+homeEquity ).^(1-risk_aver)/( ( homeEquity +exp(xgrid(ind_max)) )^( 1-risk_aver ) ) ;
+    %Ahjb(1,ind_max) = Ahjb(1,ind_max) + (expos(1).^2/2/dx^2 - Ib(1).*drift(1)./dx)*(exp(xgrid(1)) - propCost*defol +homeEquity ).^(1-risk_aver)/( ( homeEquity +exp(xgrid(ind_max)) )^( 1-risk_aver ) ); 
+    
     if max(abs(sum(Akfe,2)))>10^(-8)
         disp('Ill-posed Transition matrix')
         return
@@ -231,10 +252,10 @@ while iter <= maxiter_hjb && Vdiff>tol_hjb
 
     V = Vnew;
 end 
-M = V./( (1+exp(xgrid)) .^ (1-risk_aver) ) ;
+M = V./( (homeEquity+exp(xgrid)) .^ (1-risk_aver) ) ;
 [max_val , ind_max] = max(M);
 % define benefit of adjusting
-dval = (exp(xgrid)-prop_cost+1).^(1-risk_aver).*max_val-V;
+dval = (exp(xgrid) -propCost + homeEquity).^(1-risk_aver).*max_val-V;
 
 
 %% SOLVE KFE
@@ -272,15 +293,17 @@ disp(mean_a)
 disp(freq_adj)
 
 %% MAKE PLOTS
+xlow = borrow_lim;
+xhigh = xmax;
 if MakePlots ==1 
     figure(1);
     
     % consumption policy function
     subplot(2,4,1);
-    plot(xgrid,drift(:),'b-','LineWidth',1);
+    plot(xgrid,con+0.*exp(xgrid),'b-','LineWidth',1);
     grid;
-    xlim([borrow_lim xmax]);
-    title('Drift Policy Function');
+    xlim([xlow xhigh]);
+    title('Consumption');
     %legend('Lowest income state','Highest income state');
 
     % savings policy function
@@ -291,14 +314,15 @@ if MakePlots ==1
     %plot(xgrid,risky_share*ones(nx,1),'k','LineWidth',0.5);
     hold off;
     grid;
-    xlim([borrow_lim xmax]);
-    title('Optimal Portfolio Function');
+    xlim([xlow xhigh])
+    title('Portfolio');
     
     % consumption policy function: zoomed in
     subplot(2,4,3:4);
-    plot(log(exp(xgrid)-prop_cost+1) - log(exp(xgrid(ind_max))+1),dist_adj,'-b','LineWidth',2);
+    %plot(log(exp(xgrid)-prop_cost+1) - log(exp(xgrid(ind_max))+1),dist_adj,'-b','LineWidth',2);
+    plot(log(exp(xgrid)-propCost+homeEquity) - log(exp(xgrid(ind_max))+homeEquity),dist_adj,'-b','LineWidth',2);
     grid;
-    %xlim(borrow_lim + [0 1]);
+    xlim([log(exp(xlow)-propCost+homeEquity) - log(exp(xgrid(ind_max))+homeEquity) log(exp(xhigh)-propCost+homeEquity) - log(exp(xgrid(ind_max))+homeEquity)])
     title('Distribution of log Durable Adjustment');
     
     % % savings policy function: zoomed in
@@ -314,7 +338,7 @@ if MakePlots ==1
     subplot(2,4,5)
     plot(xgrid,adj_hazard,'b-','LineWidth',1);
     grid;
-    xlim([borrow_lim xmax]);
+    xlim([xlow xhigh])
     title('Hazard function');
     
     subplot(2,4,6)
@@ -323,13 +347,15 @@ if MakePlots ==1
     grid;
     hold off
     %ylim([0 ])
-    xlim([borrow_lim xmax]);
+    xlim([xlow xhigh])
     title('Log value of adjusting');
     
     subplot(2,4,7:8)
-    plot(xgrid,gmat,'b-','LineWidth',1);
+    plot(xgrid,gmat,'b-','LineWidth',1); hold on
+    xline(xgrid(ind_max), 'r--')
+    hold off
     grid;
-    xlim([borrow_lim xmax]);
+    xlim([xlow xhigh])
     title('Distribution');
 
 end
