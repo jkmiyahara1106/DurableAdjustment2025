@@ -44,21 +44,26 @@ end
 
 adj_arriv_u = 12; % adjust up opportunities
 adj_arriv_d = 12; % adjust down opportunities 
-psi_val_u = [ 0; exp(1); exp(3); exp(5) ; exp(6) ; exp(7); exp(15)];
-pmf_psi_u = [ 0; exp(1)/exp(15); (exp(3)-exp(1))/ exp(15); (exp(5)-exp(3))/ exp(15); (exp(6)-exp(5))/ exp(15); (exp(7)-exp(6))/ exp(15); (exp(15)-exp(7))/ exp(15)];
+nsupp = 2000;
+psi_val_u = linspace(0,300,nsupp)';%[ 0; exp(1); exp(3); exp(5) ; exp(6) ; exp(7); .3];
+pmf_psi_u = psi_val_u*0;
+pmf_psi_u(1) = 0;
+for iii = 2:nsupp
+    pmf_psi_u(iii) = (psi_val_u(iii) -  psi_val_u(iii-1))/psi_val_u(end);
+end
 cdf_psi_u = cumsum(pmf_psi_u);
 psi_cum_u = cumsum(psi_val_u.*pmf_psi_u);
 
-dist_up.vals = psi_val_u.*exp(-11);
+dist_up.vals = psi_val_u;
 dist_up.cdf = cdf_psi_u;
-dist_up.costCum =  psi_cum_u.*exp(-11);
+dist_up.costCum =  psi_cum_u;
 
-dist_down.vals = psi_val_u.*exp(-11);
+dist_down.vals = psi_val_u;
 dist_down.cdf = cdf_psi_u;
-dist_down.costCum =  psi_cum_u.*exp(-11);
+dist_down.costCum =  psi_cum_u;
 
 % asset grids
-nx          = 200; %100;
+nx          = 500; %100;
 xmax        = 4;%log(20); %400; 
 
 if ~isreal(r+(r_risk-r)*marginProp - (sigma*marginProp)^2/2)
