@@ -18,7 +18,7 @@ IterateKFE  = 0;
 %% PARAMETERS
 
 % preferences
-risk_aver   = 3.5;
+risk_aver   = 2.5;
 rho         = 0.025/4; %0.01; %0.005275; %quarterly 
 alpha       = 0.8; %share in non-durable
 zeta        = 1-alpha*(1-risk_aver);
@@ -27,11 +27,11 @@ tolCons = 1.0e-10;
 %returns
 r           = 0.01/4; %quarterly
 r_risk      = 0.07/4; %quarterly
-sigma2      = 0.1655^2/4; %quarterly
+sigma2      = 0.1655^2/4;%0.1655^2/4; %quarterly
 sigma       = sqrt(sigma2);
 risky_share = 0.7;
-marginProp = 1.2;
-homeEquity = 0.20;
+marginProp = 1.3;
+homeEquity = .2;
 mtgSpread = 0.02/4;
 
 % transaction costs
@@ -42,23 +42,23 @@ if defol*propCost > homeEquity
     disp('fees cannot be larger than home equity')
 end
 
-adj_arriv_u = 9; % adjust up opportunities
+adj_arriv_u = 12; % adjust up opportunities
 adj_arriv_d = 12; % adjust down opportunities 
-psi_val_u = [ 0; exp(1); exp(3); exp(5) ; exp(6) ; exp(7); exp(10)];
-pmf_psi_u = [ .1; .2; .2; .2; .1; .1; .1];
+psi_val_u = [ 0; exp(1); exp(3); exp(5) ; exp(6) ; exp(7); exp(15)];
+pmf_psi_u = [ 0; exp(1)/exp(15); (exp(3)-exp(1))/ exp(15); (exp(5)-exp(3))/ exp(15); (exp(6)-exp(5))/ exp(15); (exp(7)-exp(6))/ exp(15); (exp(15)-exp(7))/ exp(15)];
 cdf_psi_u = cumsum(pmf_psi_u);
 psi_cum_u = cumsum(psi_val_u.*pmf_psi_u);
 
-dist_up.vals = psi_val_u;
+dist_up.vals = psi_val_u.*exp(-11);
 dist_up.cdf = cdf_psi_u;
-dist_up.costCum =  psi_cum_u;
+dist_up.costCum =  psi_cum_u.*exp(-11);
 
-dist_down.vals = psi_val_u.*exp(-5);
+dist_down.vals = psi_val_u.*exp(-11);
 dist_down.cdf = cdf_psi_u;
-dist_down.costCum =  psi_cum_u.*exp(-5);
+dist_down.costCum =  psi_cum_u.*exp(-11);
 
 % asset grids
-nx          = 500; %100;
+nx          = 200; %100;
 xmax        = 4;%log(20); %400; 
 
 if ~isreal(r+(r_risk-r)*marginProp - (sigma*marginProp)^2/2)
@@ -128,8 +128,8 @@ c0 = r;
 Vguess(:) = u(c0,xgrid)./rho;
 
 % ITERATE ON VALUE FUNCTION
-%load('Vguess.mat')
-V    = Vguess;
+load('Vguess.mat')
+%V    = Vguess;
 Vdiff = 1;
 iter = 0;
 dVf= 0*V;
@@ -321,7 +321,9 @@ if MakePlots ==1
     subplot(2,4,3:4);
     %plot(log(exp(xgrid)-prop_cost+1) - log(exp(xgrid(ind_max))+1),dist_adj,'-b','LineWidth',2);
     plot(log(exp(xgrid)-propCost+homeEquity) - log(exp(xgrid(ind_max))+homeEquity),dist_adj,'-b','LineWidth',2);
-    grid;
+    %plot(xgrid,log(exp(xgrid)-propCost+homeEquity) - log(exp(xgrid(ind_max))+homeEquity),'-b','LineWidth',2); hold on
+    grid on;
+    %xline(xgrid(ind_max), 'r--'); hold off
     xlim([log(exp(xlow)-propCost+homeEquity) - log(exp(xgrid(ind_max))+homeEquity) log(exp(xhigh)-propCost+homeEquity) - log(exp(xgrid(ind_max))+homeEquity)])
     title('Distribution of log Durable Adjustment');
     
@@ -350,13 +352,20 @@ if MakePlots ==1
     xlim([xlow xhigh])
     title('Log value of adjusting');
     
-    subplot(2,4,7:8)
+    subplot(2,4,7)
     plot(xgrid,gmat,'b-','LineWidth',1); hold on
     xline(xgrid(ind_max), 'r--')
     hold off
     grid;
     xlim([xlow xhigh])
     title('Distribution');
+
+    % consumption policy function
+    subplot(2,4,8);
+    plot(xgrid,drift+0.*exp(xgrid),'b-','LineWidth',1);
+    grid;
+    xlim([xlow xhigh]);
+    title('Drift');
 
 end
 
