@@ -44,7 +44,7 @@ end
 
 adj_arriv_u = 12; % adjust up opportunities
 adj_arriv_d = 12; % adjust down opportunities 
-nsupp = 2000;
+nsupp = 40;
 psi_val_u = linspace(0,300,nsupp)';%[ 0; exp(1); exp(3); exp(5) ; exp(6) ; exp(7); .3];
 pmf_psi_u = psi_val_u*0;
 pmf_psi_u(1) = 0;
@@ -64,7 +64,7 @@ dist_down.costCum =  psi_cum_u;
 
 % asset grids
 nx          = 500; %100;
-xmax        = 4;%log(20); %400; 
+xmax        = 5;%log(20); %400; 
 
 if ~isreal(r+(r_risk-r)*marginProp - (sigma*marginProp)^2/2)
     disp('interest income is negative')
@@ -133,8 +133,8 @@ c0 = r;
 Vguess(:) = u(c0,xgrid)./rho;
 
 % ITERATE ON VALUE FUNCTION
-load('Vguess.mat')
-%V    = Vguess;
+%load('Vguess.mat')
+V    = Vguess;
 Vdiff = 1;
 iter = 0;
 dVf= 0*V;
@@ -343,8 +343,9 @@ if MakePlots ==1
     % title('Savings: Zoomed');
     
     subplot(2,4,5)
-    plot(xgrid,adj_hazard,'b-','LineWidth',1);
-    grid;
+    plot(xgrid,adj_hazard,'b-','LineWidth',1); hold on
+    yline(freq_adj,'r--')
+    grid on;
     xlim([xlow xhigh])
     title('Hazard function');
     

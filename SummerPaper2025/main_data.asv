@@ -1,0 +1,89 @@
+%
+clear;
+close all;
+addpath("C:\Users\kmiya\Documents\GitHub\J349546")
+
+% File path
+filename = 'J349546.xlsx';
+
+% Read the entire Excel file (modify sheet name or range if needed)
+data = readtable(filename);
+
+% Extract and rename variables with meaningful names
+own97        = data.ER10035;
+housevalue97 = data.ER10036/69.557;
+moved97      = data.ER10072;
+
+own99        = data.ER13040;
+housevalue99 = data.ER13041/74.151;
+moved99      = data.ER13077;
+
+own01        = data.ER17043;
+housevalue01 = data.ER17044/80.99;
+moved01      = data.ER17088;
+
+
+% Selling information
+sold99 = data.ER15046;
+price99 = data.ER15047;
+
+sold01 = data.ER19242;
+price01 = data.ER19243;
+
+% (Optional) Combine into a single table
+housingData = table( ...
+   own97, housevalue97, moved97, ...
+   own99, housevalue99, moved99, ...
+   own01,housevalue01, moved01, ...
+    sold99, price99, ...
+    sold01, price01);
+
+% Save to .mat or write to file if needed
+%save('housingData.mat', 'housingData');
+
+%% Filter
+
+filterOwn = all([housingData.own97 == 1 , housingData.own99 == 1, housingData.own01 == 1],2);
+
+housingDataOwn = housingData(filterOwn,:);
+
+%% 1999
+filterSold99 = housingDataOwn.sold99 == 1;
+
+dataTemp = housingDataOwn(filterSold99,:);
+
+thr = 1.2;
+filterAdj99 = any([abs(dataTemp.housevalue99./dataTemp.housevalue97) > 1.2,...
+    abs(dataTemp.housevalue99./dataTemp.housevalue97) < 0.8],2);
+
+dataTemp = dataTemp(filterAdj99,:);
+
+sizeAdj99 = dataTemp.housevalue99./dataTemp.housevalue97;
+
+%% 2001
+filterSold01 = housingDataOwn.sold01 == 1;
+
+dataTemp = housingDataOwn(filterSold01,:);
+
+thr = 1.2;
+filterAdj01 = any([abs(dataTemp.housevalue01./dataTemp.housevalue99) > 1.2,...
+    abs(dataTemp.housevalue01./dataTemp.housevalue99) < 0.8],2);
+
+dataTemp = dataTemp(filterAdj01,:);
+
+sizeAdj01 = dataTemp.housevalue01./dataTemp.housevalue99;
+
+
+figure(1)
+histogram(sizeAdj99,40,'BinEdges',[linspace(0,0.8,20) linspace(1.2,3,20)]);
+title('Distribution of size of housing adjustment ')
+xlabel('Size of Adjustment')
+ylabel('Frequency')
+
+
+
+
+
+
+
+
