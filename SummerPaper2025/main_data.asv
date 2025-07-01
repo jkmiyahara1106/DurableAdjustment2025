@@ -1,81 +1,84 @@
-%
 clear;
 close all;
-addpath("C:\Users\kmiya\Documents\GitHub\J349546")
+
+addpath("C:\Users\kmiya\Documents\GitHub\J349554");
 
 % File path
-filename = 'J349546.xlsx';
+filename = 'J349554.xlsx';
 
-% Read the entire Excel file (modify sheet name or range if needed)
+% Read all data
 data = readtable(filename);
 
-% Extract and rename variables with meaningful names
-own97        = data.ER10035;
-housevalue97 = data.ER10036/69.557;
-moved97      = data.ER10072;
+% Convert from nominal to numeric if needed
+% data.ER13040 = double(data.ER13040);  % uncomment if variables are stored as categorical
 
-own99        = data.ER13040;
-housevalue99 = data.ER13041/74.151;
-moved99      = data.ER13077;
+% List of years and corresponding inflation adjustment factors
+years = [1999, 2001, 2003, 2005, 2007, 2009, 2011, 2013, 2015, 2017, 2019, 2021, 2023];
 
-own01        = data.ER17043;
-housevalue01 = data.ER17044/80.99;
-moved01      = data.ER17088;
+price_index = [61.833,	63.852	,66.355	,68.976,	70.715,	72.503,	74.360,	76.968	,79.712	,81.888,	83.320,	83.358,	84.478	,86.309	,88.308,	90.742,	93.536,	96.666,	100.000	,103.391,	106.915,	109.978	,112.744,	119.342,	128.362];
+indx = [true false true false true false true false true false true false true false true false  true false  true false true false  true false true];
+price_index = price_index(indx);
 
+n = length(years);
+own = cell(n,1);
+value = cell(n,1);
+moved = cell(n,1);
+sold = cell(n,1);
 
-% Selling information
-sold99 = data.ER15046;
-price99 = data.ER15047;
+% Variable roots and suffixes for each type
+own_vars   = ["ER13040", "ER17043", "ER21042", "ER25028", "ER36028", "ER42029", "ER47329", "ER53029", "ER60030", "ER66030", "ER72030", "ER78031", "ER82032"];
+value_vars = ["ER13041", "ER17044", "ER21043", "ER25029", "ER36029", "ER42030", "ER47330", "ER53030", "ER60031", "ER66031", "ER72031", "ER78032", "ER82033"];
+moved_vars = ["ER13077", "ER17088", "ER21117", "ER25098", "ER36103", "ER42132", "ER47440", "ER53140", "ER60155", "ER66156", "ER72156", "ER78158", "ER82141"];
+sold_vars  = ["ER15046", "ER19242", "ER22637", "ER26618", "ER37636", "ER43627", "ER48972", "ER54734", "ER61845", "ER67899", "ER73927", "ER80049", "ER84019"];
 
-sold01 = data.ER19242;
-price01 = data.ER19243;
+% Extract variables year by year
+for i = 1:n
+    yr = years(i);
 
-% (Optional) Combine into a single table
-housingData = table( ...
-   own97, housevalue97, moved97, ...
-   own99, housevalue99, moved99, ...
-   own01,housevalue01, moved01, ...
-    sold99, price99, ...
-    sold01, price01);
+    % Safely extract each variable
+    own{i}   = data.(own_vars(i));
+    value{i} = data.(value_vars(i)) / price_index(i);   % inflation-adjusted house value
+    moved{i} = data.(moved_vars(i));
+    sold{i}  = data.(sold_vars(i));
+end
 
-% Save to .mat or write to file if needed
-%save('housingData.mat', 'housingData');
+% Convert to a named table with year suffixes
+housingData = table();
+for i = 1:n
+    suffix = num2str(years(i));
+    housingData.(['own' suffix])   = own{i};
+    housingData.(['value' suffix]) = value{i};
+    housingData.(['moved' suffix]) = moved{i};
+    housingData.(['sold' suffix])  = sold{i};
+end
+
+% Optional: Save as .mat file
+save('psid_housing_clean.mat', 'housingData');
+
 
 %% Filter
 
-filterOwn = all([housingData.own97 == 1 , housingData.own99 == 1, housingData.own01 == 1],2);
+filterOwn01 = all([housingData.own99 == 1, housingData.own01 == 1],2);
 
-housingDataOwn = housingData(filterOwn,:);
-
-%% 1999
-filterSold99 = housingDataOwn.sold99 == 1;
-
-dataTemp = housingDataOwn(filterSold99,:);
-
-thr = 1.2;
-filterAdj99 = any([abs(dataTemp.housevalue99./dataTemp.housevalue97) > 1.2,...
-    abs(dataTemp.housevalue99./dataTemp.housevalue97) < 0.8],2);
-
-dataTemp = dataTemp(filterAdj99,:);
-
-sizeAdj99 = dataTemp.housevalue99./dataTemp.housevalue97;
+housingDataOwnTemp = housingData(filterOwn01,:);
+thr = .15;
 
 %% 2001
-filterSold01 = housingDataOwn.sold01 == 1;
+filterSold01 = all([housingDataOwnTemp.moved01 == 1,housingDataOwnTemp.sold01 == 1],2);
 
-dataTemp = housingDataOwn(filterSold01,:);
+dataTemp = housingDataOwnTemp(filterSold01,:);
 
-thr = 1.2;
-filterAdj01 = any([abs(dataTemp.housevalue01./dataTemp.housevalue99) > 1.2,...
-    abs(dataTemp.housevalue01./dataTemp.housevalue99) < 0.8],2);
+% please check that housevalue variables are not missing 
+filterAdj01 = any([abs(dataTemp.housevalue01./dataTemp.housevalue99) > 1+thr,...
+    abs(dataTemp.housevalue01./dataTemp.housevalue99) < 1-thr],2);
 
 dataTemp = dataTemp(filterAdj01,:);
 
 sizeAdj01 = dataTemp.housevalue01./dataTemp.housevalue99;
 
-
+%%
 figure(1)
-histogram(sizeAdj99,40,'BinEdges',[linspace(0,0.8,20) linspace(1.2,3,20)]);
+histogram([sizeAdj99;sizeAdj01],40,'BinEdges',[linspace(0,1-thr,20) linspace(1+thr,4,20)]);
 title('Distribution of size of housing adjustment ')
 xlabel('Size of Adjustment')
 ylabel('Frequency')
