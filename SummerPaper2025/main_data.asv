@@ -24,66 +24,104 @@ own = cell(n,1);
 value = cell(n,1);
 moved = cell(n,1);
 sold = cell(n,1);
+age  = cell(n,1);
 
 % Variable roots and suffixes for each type
 own_vars   = ["ER13040", "ER17043", "ER21042", "ER25028", "ER36028", "ER42029", "ER47329", "ER53029", "ER60030", "ER66030", "ER72030", "ER78031", "ER82032"];
 value_vars = ["ER13041", "ER17044", "ER21043", "ER25029", "ER36029", "ER42030", "ER47330", "ER53030", "ER60031", "ER66031", "ER72031", "ER78032", "ER82033"];
 moved_vars = ["ER13077", "ER17088", "ER21117", "ER25098", "ER36103", "ER42132", "ER47440", "ER53140", "ER60155", "ER66156", "ER72156", "ER78158", "ER82141"];
 sold_vars  = ["ER15046", "ER19242", "ER22637", "ER26618", "ER37636", "ER43627", "ER48972", "ER54734", "ER61845", "ER67899", "ER73927", "ER80049", "ER84019"];
+age_vars   = ["ER13010", "ER17013", "ER21017", "ER25017", "ER36017", "ER42017", "ER47317", "ER53017", "ER60017", "ER66017", "ER72017", "ER78017", "ER82018"];
 
 % Extract variables year by year
-for i = 1:n
-    yr = years(i);
+for it = 1:n
+    yr = years(it);
 
     % Safely extract each variable
-    own{i}   = data.(own_vars(i));
-    value{i} = data.(value_vars(i)) / price_index(i);   % inflation-adjusted house value
-    moved{i} = data.(moved_vars(i));
-    sold{i}  = data.(sold_vars(i));
+    own{it}   = data.(own_vars(it));
+    value{it} = data.(value_vars(it)) / price_index(it);   % inflation-adjusted house value
+    moved{it} = data.(moved_vars(it));
+    sold{it}  = data.(sold_vars(it));
+    age{it}   = data.(age_vars(it));
 end
 
 % Convert to a named table with year suffixes
 housingData = table();
-for i = 1:n
-    suffix = num2str(years(i));
-    housingData.(['own' suffix])   = own{i};
-    housingData.(['value' suffix]) = value{i};
-    housingData.(['moved' suffix]) = moved{i};
-    housingData.(['sold' suffix])  = sold{i};
+for it = 1:n
+    suffix = num2str(years(it));
+    housingData.(['own' suffix])   = own{it};
+    housingData.(['value' suffix]) = value{it};
+    housingData.(['moved' suffix]) = moved{it};
+    housingData.(['sold' suffix])  = sold{it};
+    housingData.(['age' suffix])  = sold{it};
 end
 
 % Optional: Save as .mat file
-save('psid_housing_clean.mat', 'housingData');
+%save('psid_housing_clean.mat', 'housingData');
 
 
 %% Filter
+thr = 0.20;  % threshold for meaningful adjustment
+sizeAdjAllYears = [];
+dist_adj = cell(length(years) - 1,1);
+prop_adj_up = zeros(length(years) - 1,1);
+for it = 1:(length(years) - 1)
+    year_t = num2str(years(it));
+    year_tp1 = num2str(years(it+1));
 
-filterOwn01 = all([housingData.own99 == 1, housingData.own01 == 1],2);
+    % Extract relevant variables
+    own_t = housingData.(['own' year_t]);
+    age_t = housingData.(['age' year_t]);
+    own_tp1 = housingData.(['own' year_tp1]);
+    moved_tp1 = housingData.(['moved' year_tp1]);
+    sold_tp1 = housingData.(['sold' year_tp1]);
+    val_t = housingData.(['value' year_t]);
+    val_tp1 = housingData.(['value' year_tp1]);
 
-housingDataOwnTemp = housingData(filterOwn01,:);
-thr = .15;
+    % Step 1: Owners in both years and younger than 65 in both years
+    filterOwn = all([own_t == 1, own_tp1 == 1, age_t < 63], 2);
+    dataOwn = table(own_t, own_tp1, moved_tp1, sold_tp1, val_t, val_tp1);
+    dataOwn = dataOwn(filterOwn, :);
 
-%% 2001
-filterSold01 = all([housingDataOwnTemp.moved01 == 1,housingDataOwnTemp.sold01 == 1],2);
+    % Step 2: Moved and sold in later year
+    filterTransact = all([dataOwn.moved_tp1 == 1, dataOwn.sold_tp1 == 1], 2);
+    dataAdj = dataOwn(filterTransact, :);
 
-dataTemp = housingDataOwnTemp(filterSold01,:);
+    % Step 3: Remove missing, zero, or negative values
+    validVals = dataAdj.val_t > 0 & dataAdj.val_tp1 > 0 & ...
+                ~isnan(dataAdj.val_t) & ~isnan(dataAdj.val_tp1);
+    dataAdj = dataAdj(validVals, :);
 
-% please check that housevalue variables are not missing 
-filterAdj01 = any([abs(dataTemp.housevalue01./dataTemp.housevalue99) > 1+thr,...
-    abs(dataTemp.housevalue01./dataTemp.housevalue99) < 1-thr],2);
+    % Step 4: Compute relative adjustment
+    sizeRatio = log(dataAdj.val_tp1 ./ dataAdj.val_t);
 
-dataTemp = dataTemp(filterAdj01,:);
+    % Step 5: Keep meaningful adjustments
+    filterSize = abs(sizeRatio) > thr;
+    sizeAdj = sizeRatio(filterSize);
 
-sizeAdj01 = dataTemp.housevalue01./dataTemp.housevalue99;
+    % Step 6: Stack results
+    sizeAdjAllYears = [sizeAdjAllYears; sizeAdj];
+    
+    dist_adj{it} = sizeAdj;
+    prop_adj_up(it) = mean(sizeAdj>0);
+end
+
 
 %%
+numBins =40;
 figure(1)
-histogram([sizeAdj99;sizeAdj01],40,'BinEdges',[linspace(0,1-thr,20) linspace(1+thr,4,20)]);
+histogram(sizeAdjAllYears,numBins,'BinEdges',[linspace(-1.5,-thr,numBins/2) linspace(thr,4,numBins/2)]);
 title('Distribution of size of housing adjustment ')
 xlabel('Size of Adjustment')
 ylabel('Frequency')
 
-
+figure(2)
+for it = 1:(length(years) - 1)
+    subplot(3,4,it)
+    histogram(dist_adj{it},numBins,'BinEdges',[linspace(-1,-thr,numBins/2) linspace(thr,4,numBins/2)]);
+    title(['Year ',num2str(years(it+1))])
+end
+sgtitle('Distribution of adjustment across years')
 
 
 

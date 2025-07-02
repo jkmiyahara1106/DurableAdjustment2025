@@ -61,7 +61,7 @@ end
 
 
 %% Filter
-thr = 0.15;  % threshold for meaningful adjustment
+thr = 0.20;  % threshold for meaningful adjustment
 sizeAdjAllYears = [];
 dist_adj = cell(length(years) - 1,1);
 prop_adj_up = zeros(length(years) - 1,1);
@@ -93,37 +93,44 @@ for it = 1:(length(years) - 1)
     dataAdj = dataAdj(validVals, :);
 
     % Step 4: Compute relative adjustment
-    sizeRatio = dataAdj.val_tp1 ./ dataAdj.val_t;
+    sizeRatio = log(dataAdj.val_tp1 ./ dataAdj.val_t);
 
     % Step 5: Keep meaningful adjustments
-    filterSize = abs(sizeRatio - 1) > thr;
+    filterSize = abs(sizeRatio) > thr;
     sizeAdj = sizeRatio(filterSize);
 
     % Step 6: Stack results
     sizeAdjAllYears = [sizeAdjAllYears; sizeAdj];
     
     dist_adj{it} = sizeAdj;
-    prop_adj_up(it) = mean(sizeAdj>1);
+    prop_adj_up(it) = mean(sizeAdj>0);
 end
 
 
 %%
 numBins =40;
-figure(1)
-histogram(sizeAdjAllYears,numBins,'BinEdges',[linspace(0.1,1-thr,numBins/2) linspace(1+thr,4,numBins/2)]);
-title('Distribution of size of housing adjustment ')
-xlabel('Size of Adjustment')
-ylabel('Frequency')
+fig = figure(1);
+histogram(sizeAdjAllYears,numBins,'BinEdges',[linspace(-1.5,-thr,numBins/2) linspace(thr,3,numBins/2)],'Normalization','probability');
+title('Distribution of size of housing adjustment (PSID 1999-2023)',FontSize=16,Interpreter='latex')
+xlabel('Size of Log Adjustment',FontSize=16,Interpreter='latex')
+ylabel('Probability',FontSize=16,Interpreter='latex')
 
-figure(2)
+set(fig, 'PaperUnits', 'inches');
+set(fig, 'PaperPosition', [0 0 9.5/1.5 7.5/1.5]);  % 16:9 format
+print(fig, '.\Figures\FigSizeAllYears', '-dpng', '-r300');
+
+%%
+fig = figure(2);
 for it = 1:(length(years) - 1)
     subplot(3,4,it)
-    histogram(dist_adj{it},numBins,'BinEdges',[linspace(0.1,1-thr,numBins/2) linspace(1+thr,4,numBins/2)]);
-    title(['Year ',num2str(years(it+1))])
+    histogram(dist_adj{it},numBins,'BinEdges',[linspace(-1.5,-thr,numBins/2) linspace(thr,3,numBins/2)],'Normalization','probability');
+    title(['Year ',num2str(years(it+1))],FontSize=14,Interpreter='latex')
 end
-sgtitle('Distribution of adjustment across years')
+sgtitle('Distribution of adjustment across years',FontSize=16,Interpreter='latex')
 
-
+set(fig, 'PaperUnits', 'inches');
+set(fig, 'PaperPosition', [0 0 9.5/1.5 7.5/1.5]);  % 16:9 format
+print(fig, '.\Figures\FigSizeEachYears', '-dpng', '-r300');
 
 
 

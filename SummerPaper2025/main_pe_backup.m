@@ -18,7 +18,7 @@ IterateKFE  = 0;
 %% PARAMETERS
 
 % preferences
-risk_aver   = 2.5;
+risk_aver   = 3.1;
 rho         = 0.025/4; %0.01; %0.005275; %quarterly 
 alpha       = 0.8; %share in non-durable
 zeta        = 1-alpha*(1-risk_aver);
@@ -35,17 +35,12 @@ homeEquity = .2;
 mtgSpread = 0.02/4;
 
 % transaction costs
-propCost = 0.05;
-defol = 2;
-
-if defol*propCost > homeEquity
-    disp('fees cannot be larger than home equity')
-end
+propCost = 0.02;
 
 adj_arriv_u = 12; % adjust up opportunities
 adj_arriv_d = 12; % adjust down opportunities 
-nsupp = 40;
-psi_val_u = linspace(0,300,nsupp)';%[ 0; exp(1); exp(3); exp(5) ; exp(6) ; exp(7); .3];
+nsupp = 80000;
+psi_val_u = linspace(0,15000,nsupp)';%[ 0; exp(1); exp(3); exp(5) ; exp(6) ; exp(7); .3];
 pmf_psi_u = psi_val_u*0;
 pmf_psi_u(1) = 0;
 for iii = 2:nsupp
@@ -54,6 +49,7 @@ end
 cdf_psi_u = cumsum(pmf_psi_u);
 psi_cum_u = cumsum(psi_val_u.*pmf_psi_u);
 
+% adjust wealth-to-house up or house down
 dist_up.vals = psi_val_u;
 dist_up.cdf = cdf_psi_u;
 dist_up.costCum =  psi_cum_u;
@@ -133,8 +129,8 @@ c0 = r;
 Vguess(:) = u(c0,xgrid)./rho;
 
 % ITERATE ON VALUE FUNCTION
-%load('Vguess.mat')
-V    = Vguess;
+load('Vguess.mat')
+%V    = Vguess;
 Vdiff = 1;
 iter = 0;
 dVf= 0*V;
@@ -297,7 +293,7 @@ dist_adj = adj_hazard.*gvecadj/freq_adj;
 disp(mean_a)
 disp(freq_adj)
 
-%% MAKE PLOTS
+% MAKE PLOTS
 xlow = borrow_lim;
 xhigh = xmax;
 if MakePlots ==1 
@@ -375,3 +371,86 @@ if MakePlots ==1
 
 end
 
+%% Individual graphs: Dist
+fontsizeTitle = 16;
+fontsizeText = 16;
+
+fig =figure(2);
+plot(log(exp(xgrid)-propCost+homeEquity) - log(exp(xgrid(ind_max))+homeEquity),dist_adj./xdelta,'-b','LineWidth',2);grid on
+xlim([-1.5 3])
+xlabel('Size of Log Adjustment',Fontsize=fontsizeText,Interpreter='latex')
+ylabel('Density',Fontsize=fontsizeText,Interpreter='latex')
+title('Distribution of size of housing adjustment (Model)',Fontsize=fontsizeTitle,Interpreter='latex');
+
+set(fig, 'PaperUnits', 'inches');
+set(fig, 'PaperPosition', [0 0 9.5/1.5 7.5/1.5]);  % 16:9 format
+print(fig, '.\Figures\FigDistModel', '-dpng', '-r300');
+
+%% Hazard
+xlow = xgrid(find(adj_hazard==0,1,'first'));
+xhigh = xgrid(find(adj_hazard==0,1,'last'));
+xhat = xgrid(ind_max);
+g_fun = @(x) log(exp(x)-propCost+homeEquity) - log(exp(xgrid(ind_max))+homeEquity);
+fig =figure(3);
+plot(g_fun(xgrid),1-exp(-adj_hazard/3),'-b','LineWidth',2);hold on;grid on
+xlim([-1.5 3])
+xline(g_fun(xlow),'--r')
+xline(g_fun(xhigh),'--r')
+xline(g_fun(xhat),'--k')
+hold off
+xlabel('Size of desired log adjustment $\Delta d$',Fontsize=fontsizeText,Interpreter='latex')
+ylabel('Probability (per month)',Fontsize=fontsizeText,Interpreter='latex')
+title('Hazard function $\lambda(\Delta d)$',Fontsize=fontsizeTitle,Interpreter='latex');
+
+set(fig, 'PaperUnits', 'inches');
+set(fig, 'PaperPosition', [0 0 9.5/1.5 7.5/1.5]);  % 16:9 format
+print(fig, '.\Figures\FigHazard', '-dpng', '-r300');
+
+%% Distribution of desired adjustments
+fig =figure(3);
+plot(g_fun(xgrid),gmat,'-b','LineWidth',2);hold on;grid on
+xlim([-1.5 3])
+xline(g_fun(xlow),'--r')
+xline(g_fun(xhigh),'--r')
+xline(g_fun(xhat),'--k')
+hold off
+xlabel('Size of desired log adjustment $\Delta d$',Fontsize=fontsizeText,Interpreter='latex')
+ylabel('Density',Fontsize=fontsizeText,Interpreter='latex')
+title('Distribution of desired adjustments $m(\Delta d)$',Fontsize=fontsizeTitle,Interpreter='latex');
+
+set(fig, 'PaperUnits', 'inches');
+set(fig, 'PaperPosition', [0 0 9.5/1.5 7.5/1.5]);  % 16:9 format
+print(fig, '.\Figures\FigDistDd', '-dpng', '-r300');
+
+
+%% Consumption Policy
+fig =figure(4);
+plot(exp(xgrid),con.*exp(xgrid),'-b','LineWidth',2);hold on;grid on
+xlim([exp(xlow)-1 exp(xhigh)+1])
+xline(exp(xlow),'--r')
+xline(exp(xhigh),'--r')
+xline(exp(xhat),'--k')
+hold off
+xlabel('Liquid wealth to housing ratio $w=W/D$',Fontsize=fontsizeText,Interpreter='latex')
+ylabel('Consumption ratio',Fontsize=fontsizeText,Interpreter='latex')
+title('Non-durable to durable consumption policy $c=C/D$',Fontsize=fontsizeTitle,Interpreter='latex');
+
+set(fig, 'PaperUnits', 'inches');
+set(fig, 'PaperPosition', [0 0 9.5/1.5 7.5/1.5]);  % 16:9 format
+print(fig, '.\Figures\FigCons', '-dpng', '-r300');
+
+%% Portfolio Policy
+fig =figure(5);
+plot(exp(xgrid),expos./sigma,'-b','LineWidth',2);hold on; grid on
+xlim([exp(xlow)-1 exp(xhigh)+1])
+xline(exp(xlow),'--r')
+xline(exp(xhigh),'--r')
+xline(exp(xhat),'--k')
+hold off
+xlabel('Liquid wealth to housing ratio $w=W/D$',Fontsize=fontsizeText,Interpreter='latex')
+ylabel('Share in Risky Asseet',Fontsize=fontsizeText,Interpreter='latex')
+title('Portfolio policy $\theta(w)$',Fontsize=fontsizeTitle,Interpreter='latex');
+
+set(fig, 'PaperUnits', 'inches');
+set(fig, 'PaperPosition', [0 0 9.5/1.5 7.5/1.5]);  % 16:9 format
+print(fig, '.\Figures\FigPortfolio', '-dpng', '-r300');
