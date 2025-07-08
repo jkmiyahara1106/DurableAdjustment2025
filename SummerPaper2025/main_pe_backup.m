@@ -394,6 +394,7 @@ g_fun = @(x) log(exp(x)-propCost+homeEquity) - log(exp(xgrid(ind_max))+homeEquit
 fig =figure(3);
 plot(g_fun(xgrid),1-exp(-adj_hazard/3),'-b','LineWidth',2);hold on;grid on
 xlim([-1.5 3])
+ylim([0 0.2])
 xline(g_fun(xlow),'--r')
 xline(g_fun(xhigh),'--r')
 xline(g_fun(xhat),'--k')

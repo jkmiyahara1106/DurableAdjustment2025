@@ -110,10 +110,10 @@ end
 %%
 numBins =40;
 fig = figure(1);
-histogram(sizeAdjAllYears,numBins,'BinEdges',[linspace(-1.5,-thr,numBins/2) linspace(thr,3,numBins/2)],'Normalization','probability');
+histogram(sizeAdjAllYears,numBins,'BinEdges',[linspace(-1.5,-thr,numBins/2) linspace(thr,3,numBins/2)],'Normalization','pdf');
 title('Distribution of size of housing adjustment (PSID 1999-2023)',FontSize=16,Interpreter='latex')
 xlabel('Size of Log Adjustment',FontSize=16,Interpreter='latex')
-ylabel('Probability',FontSize=16,Interpreter='latex')
+ylabel('Density',FontSize=16,Interpreter='latex')
 
 set(fig, 'PaperUnits', 'inches');
 set(fig, 'PaperPosition', [0 0 9.5/1.5 7.5/1.5]);  % 16:9 format
