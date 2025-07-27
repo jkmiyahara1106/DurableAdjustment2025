@@ -1,0 +1,65 @@
+\section{Model}
+\subsection{Preliminaries}
+
+The agent derives utility from non-durable consumption $C$ and durable $D$, with Cobb-Douglas preferences over the two goods. The utility function is given by
+$$E_0 \big[ \int_0^\infty e^{-\rho t} \frac{\big(C_t^\alpha D_t^{1-\alpha}\big)^{1-\gamma}}{1-\gamma} dt \big],$$
+where $\rho$ denotes the discount rate, $\alpha$ the (desired) expenditure share on non-durables, and $\gamma$ the risk aversion parameter (which is also the inverse of the intertemporal elasticity of substitution).
+
+The agent's only source of income is portfolio returns.\footnote{Similar results follow for a model with constant labor income. The key assumption to exploit the homogeneity properties of the problem  is the absence of idiosyncratic labor income risk.} He invests in a risk-free asset yielding rate $r$ and allocates a proportion $\theta>0$ in a risky asset with excess return $r_e$ and volatility $\sigma$. Durable purchases require a down payment share $\epsilon$, with the remaining $1-\epsilon$ financed at a borrowing rate with credit spread $s>0$. For simplicity, depreciation and maintenance are assumed to be zero.
+
+Upon adjustment, the agent sells the existing durable of  value $D$ and acquires a new durable of value $\hat D$, incurring dealer fees $fD$ and receives net sales proceeds $\epsilon\big(D-\hat{D}\big)$. As a result, the jump in financial wealth is $-fD+\epsilon(D-\hat D)$
+
+\paragraph{Financial wealth evolution.} Let $W$ denote financial wealth, the agent's wealth evolves as 
+\begin{equation}
+    dW=\,\big[rW+r_e\theta W-C-(1-\epsilon)(r+s)D\big]dt +\theta W\sigma dZ_t+\big[-fD+\epsilon(D-\hat D)\big]dN_t, \label{eq-evolW}
+\end{equation}
+where $Z_t$ is a Wiener process and $N_t$ is an optimally chosen Poisson counter representing adjustment events.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{Sequential problem}
+
+Adjustment opportunities arrive at random times $\tau$, governed by a Poisson process with exogenous intensity $\kappa>0$. However, because adjustment incurs costs, the agent may optimally choose not to adjust when given the opportunity. Specifically, at each adjustment date, the agent faces two types of costs: proportional transaction costs $fD$ and a utility switching cost $\psi D^{1-\gamma}$, where $\psi$ is drawn from a distribution $F$ with non-negative support and assumed i.i.d. across agents and over time. 
+
+The agent selects a cutoff $\bar \psi$ --the maximum switching cost he is willing to ``pay''-- thereby determining the endogenous jump intensity $\lambda_w=\kappa F(\bar \psi)$. Allowing $\kappa$ to be arbitrarily large nests a pure fixed cost model as a limiting case.
+
+At each point in time, the agent chooses the non-durable consumption rate $C_t$, the risky portfolio share $\theta_t$, the desired new durable stock $\hat D$ if adjusting, and a adjustment hazard $\lambda_{w,t}=\kappa F(\bar\psi_t)\in[0,\kappa]$.
+
+The agent's value function satisfies
+\begin{align}
+    V(W,D) &=\,\, \max_{\{C_t,\theta_t,\bar{\psi}_t\}}E_0 \Big[ \int_0^\tau e^{-\rho t} \frac{\big(C_t^\alpha D^{1-\alpha}\big)^{1-\gamma}}{1-\gamma} dt  + e^{-\rho \tau}(1-F(\bar\psi_t))V(W_\tau,D) \label{seq-problem}\\
+  &\,+e^{-\rho \tau} F(\bar\psi_t)\left\{ \max_{\hat{D}}V[W_\tau - f D + \epsilon \big(D - \hat{D}\big), \hat{D}] - E[\psi|\psi<\bar \psi_t] D^{1-\gamma} \right\} \Big],  \notag
+\end{align}
+\paragraph{Optimal adjustment hazard.} 
+The optimal cutoff $\bar{\psi}^{*}$ equates the switching cost  to the benefit of adjustment
+\begin{equation}
+\bar{\psi}^{*}=\big(V(\hat{W},\hat{D})-V(W,D)\big)/D^{1-\gamma}, \label{eq-lambda}
+\end{equation}
+where $\hat{W}$ is post-adjustment financial wealth. This condition highlights the state-dependence, that agents with greater benefits from adjustment will select higher hazard rates. 
+
+\subsubsection*{Sequential Problem: Homothetic Formulation}
+
+Thanks to the assumption of no idiosyncratic labor income risk the agent's state can be reduced to one variable: the ratio of financial to durable wealth $w\equiv W/D$. The value function $V$ is homogeneous of degree $1-\gamma$ in $D$ which suggests the definition $v(w)\equiv V(w,1)$. Let $c\equiv C/D$ denote the ratio of non-durable to durable consumption,  the  the ratio $w$ evolves as 
+
+\begin{equation}
+    dw=\,\big[\underbrace{rw+r_e\theta w-c-(1-\epsilon)(r+s)}_{\equiv\mu_w(w,c,\theta)}\big]dt +\underbrace{\theta w\sigma}_{\equiv \sigma_w(w,\theta)} dZ_t+\big[\hat{w}-w\big]dN_t, \label{eq-evolw}
+\end{equation}
+where $\hat w \equiv \hat W/\hat D= (w-f+\epsilon)D/\hat D-\epsilon$. Since there is a one-to-one mapping between $\hat w$ and $\hat D$ then we can solve for $\hat w$ instead. 
+The value function $v$ satisfies
+\begin{align}
+    v(w) &=\,\, \max_{\{c_t,\theta_t,\bar{\psi}_t\}}E_0 \Big[ \int_0^\tau e^{-\rho t} \frac{\big(c_t^\alpha \big)^{1-\gamma}}{1-\gamma} dt + e^{-\rho \tau}(1-F(\bar\psi_t))v(w_\tau) \label{seq-problem} \\
+  &\,+e^{-\rho \tau} F(\bar\psi_t)\left\{ \max_{\hat{w}}\left(\frac{w-f+\epsilon}{\hat w+\epsilon}\right)^{1-\gamma}v(\hat w) - E[\psi|\psi<\bar \psi_t] \right\} \Big],  \notag
+\end{align}
+where the factor scaling the continuation value upon an adjustment appears because of homogeneity with respect to the durable and is equal to $(\hat D/D)^{1-\gamma}$. 
+
+\subsection{Recursive Problem}
+The recursive problem offers a simpler and more useful characterization of the agent's problem. The function $v$ satisfies the following HJB equation
+\begin{equation}
+    \rho v(w) =\,\max_{c,\theta}\left\{ \frac{ c^{\alpha(1-\gamma)}}{1-\gamma} + \mu_w(w,c,\theta)v^{\prime}(w)+\frac{\sigma_w(w,\theta)^2}{2}v^{\prime\prime}(w)\right\}+H[y(w)],
+\end{equation}
+where $y(w)\equiv(w-f+\epsilon)^{1-\gamma}\max_{\hat{w}}\frac{v(\hat w)}{\left(\hat w+\epsilon\right)^{1-\gamma}}-v(w)$ denotes the benefit of adjusting for an agent with ratio $w$ and $H$ denotes the impulse Hamiltonian (Alvarez, Lippi and Souganidis, 2023) encoding the value and costs of adjusting defined as 
+\begin{equation*}
+    H(y) \equiv \max_{\bar\psi}\kappa F(\bar\psi) \left[y-E\big( \psi|\psi<\bar\psi\big)\right],\qquad\text{with }\quad \lambda_w(w)=H'(y(w))=\kappa F(y(w)).
+\end{equation*} 
+
+The policies for $c(w),\theta(w)$ follow from standard first order conditions and together with $\lambda_w(w)$, they completely characterize the solution to the agent's problem.

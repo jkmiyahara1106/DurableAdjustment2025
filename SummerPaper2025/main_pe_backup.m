@@ -378,9 +378,9 @@ fontsizeText = 16;
 fig =figure(2);
 plot(log(exp(xgrid)-propCost+homeEquity) - log(exp(xgrid(ind_max))+homeEquity),dist_adj./xdelta,'-b','LineWidth',2);grid on
 xlim([-1.5 3])
-xlabel('Size of Log Adjustment',Fontsize=fontsizeText,Interpreter='latex')
+xlabel('Size of Log Adjustment $\Delta d$',Fontsize=fontsizeText,Interpreter='latex')
 ylabel('Density',Fontsize=fontsizeText,Interpreter='latex')
-title('Distribution of size of housing adjustment (Model)',Fontsize=fontsizeTitle,Interpreter='latex');
+title('Size distribution of housing adjustment (Model)',Fontsize=fontsizeTitle,Interpreter='latex');
 
 set(fig, 'PaperUnits', 'inches');
 set(fig, 'PaperPosition', [0 0 9.5/1.5 7.5/1.5]);  % 16:9 format
@@ -395,9 +395,11 @@ fig =figure(3);
 plot(g_fun(xgrid),1-exp(-adj_hazard/3),'-b','LineWidth',2);hold on;grid on
 xlim([-1.5 3])
 ylim([0 0.2])
-xline(g_fun(xlow),'--r')
-xline(g_fun(xhigh),'--r')
-xline(g_fun(xhat),'--k')
+% Custom vertical lines
+ylims = ylim;  % get y-axis limits for vertical line extent
+plot([g_fun(xlow), g_fun(xlow)], ylims, '--r', 'LineWidth', 1);
+plot([g_fun(xhigh), g_fun(xhigh)], ylims, '--r', 'LineWidth', 1);
+plot([g_fun(xhat), g_fun(xhat)], ylims, '--k', 'LineWidth', 1);
 hold off
 xlabel('Size of desired log adjustment $\Delta d$',Fontsize=fontsizeText,Interpreter='latex')
 ylabel('Probability (per month)',Fontsize=fontsizeText,Interpreter='latex')
@@ -407,13 +409,39 @@ set(fig, 'PaperUnits', 'inches');
 set(fig, 'PaperPosition', [0 0 9.5/1.5 7.5/1.5]);  % 16:9 format
 print(fig, '.\Figures\FigHazard', '-dpng', '-r300');
 
+%% Hazard
+xlow = xgrid(find(adj_hazard==0,1,'first'));
+xhigh = xgrid(find(adj_hazard==0,1,'last'));
+xhat = xgrid(ind_max);
+g_fun = @(x) log(exp(x)-propCost+homeEquity) - log(exp(xgrid(ind_max))+homeEquity);
+fig =figure(31);
+plot(exp(xgrid),1-exp(-adj_hazard/3),'-b','LineWidth',2);hold on;grid on
+xlim([exp(xlow)-2 16])
+ylim([0 0.2])
+% Custom vertical lines
+ylims = ylim;  % get y-axis limits for vertical line extent
+plot([exp(xlow), exp(xlow)], ylims, '--r', 'LineWidth', 1);
+plot([exp(xhigh), exp(xhigh)], ylims, '--r', 'LineWidth', 1);
+plot([exp(xhat), exp(xhat)], ylims, '--k', 'LineWidth', 1);
+hold off
+xlabel('$w$',Fontsize=fontsizeText,Interpreter='latex')
+ylabel('Probability (per month)',Fontsize=fontsizeText,Interpreter='latex')
+title('Hazard function $\lambda_w(w)$',Fontsize=fontsizeTitle,Interpreter='latex');
+
+set(fig, 'PaperUnits', 'inches');
+set(fig, 'PaperPosition', [0 0 9.5/1.5 7.5/1.5]);  % 16:9 format
+print(fig, '.\Figures\FigHazardw', '-dpng', '-r300');
+
+
 %% Distribution of desired adjustments
-fig =figure(3);
+fig =figure(4);
 plot(g_fun(xgrid),gmat,'-b','LineWidth',2);hold on;grid on
 xlim([-1.5 3])
-xline(g_fun(xlow),'--r')
-xline(g_fun(xhigh),'--r')
-xline(g_fun(xhat),'--k')
+% Custom vertical lines
+ylims = ylim;  % get y-axis limits for vertical line extent
+plot([g_fun(xlow), g_fun(xlow)], ylims, '--r', 'LineWidth', 1);
+plot([g_fun(xhigh), g_fun(xhigh)], ylims, '--r', 'LineWidth', 1);
+plot([g_fun(xhat), g_fun(xhat)], ylims, '--k', 'LineWidth', 1);
 hold off
 xlabel('Size of desired log adjustment $\Delta d$',Fontsize=fontsizeText,Interpreter='latex')
 ylabel('Density',Fontsize=fontsizeText,Interpreter='latex')
@@ -424,34 +452,89 @@ set(fig, 'PaperPosition', [0 0 9.5/1.5 7.5/1.5]);  % 16:9 format
 print(fig, '.\Figures\FigDistDd', '-dpng', '-r300');
 
 
-%% Consumption Policy
-fig =figure(4);
-plot(exp(xgrid),con.*exp(xgrid),'-b','LineWidth',2);hold on;grid on
-xlim([exp(xlow)-1 exp(xhigh)+1])
-xline(exp(xlow),'--r')
-xline(exp(xhigh),'--r')
-xline(exp(xhat),'--k')
+%% Distribution of desired adjustments
+fig =figure(41);
+plot(exp(xgrid),gmat,'-b','LineWidth',2);hold on;grid on
+xlim([exp(xlow)-2 16])
+%ylim([0 0.2])
+% Custom vertical lines
+ylims = ylim;  % get y-axis limits for vertical line extent
+plot([exp(xlow), exp(xlow)], ylims, '--r', 'LineWidth', 1);
+plot([exp(xhigh), exp(xhigh)], ylims, '--r', 'LineWidth', 1);
+plot([exp(xhat), exp(xhat)], ylims, '--k', 'LineWidth', 1);
 hold off
-xlabel('Liquid wealth to housing ratio $w=W/D$',Fontsize=fontsizeText,Interpreter='latex')
+xlabel('$w$',Fontsize=fontsizeText,Interpreter='latex')
+ylabel('Density',Fontsize=fontsizeText,Interpreter='latex')
+title('Distribution of wealth ratios $m_w(w)$',Fontsize=fontsizeTitle,Interpreter='latex');
+
+set(fig, 'PaperUnits', 'inches');
+set(fig, 'PaperPosition', [0 0 9.5/1.5 7.5/1.5]);  % 16:9 format
+print(fig, '.\Figures\FigDistw', '-dpng', '-r300');
+
+%% Consumption Policy
+fig =figure(5);
+plot(exp(xgrid),con.*exp(xgrid)*4,'-b','LineWidth',2);hold on;grid on
+plot(exp(xgrid),alpha/(1-alpha)*(r+mtgSpread)*4*ones(size(xgrid)),'--b',LineWidth=1);
+xlim([exp(xlow)-1 16])
+% Custom vertical lines
+ylims = ylim;  % get y-axis limits for vertical line extent
+plot([exp(xlow), exp(xlow)], ylims, '--r', 'LineWidth', 1);
+plot([exp(xhigh), exp(xhigh)], ylims, '--r', 'LineWidth', 1);
+plot([exp(xhat), exp(xhat)], ylims, '--k', 'LineWidth', 1);
+
+xlim([exp(xlow)-1, 16]);
+hold off
+xlabel('$w$',Fontsize=fontsizeText,Interpreter='latex')
 ylabel('Consumption ratio',Fontsize=fontsizeText,Interpreter='latex')
-title('Non-durable to durable consumption policy $c=C/D$',Fontsize=fontsizeTitle,Interpreter='latex');
+title('Non-durable consumption ratio $c(w)$',Fontsize=fontsizeTitle,Interpreter='latex');
 
 set(fig, 'PaperUnits', 'inches');
 set(fig, 'PaperPosition', [0 0 9.5/1.5 7.5/1.5]);  % 16:9 format
 print(fig, '.\Figures\FigCons', '-dpng', '-r300');
 
 %% Portfolio Policy
-fig =figure(5);
-plot(exp(xgrid),expos./sigma,'-b','LineWidth',2);hold on; grid on
-xlim([exp(xlow)-1 exp(xhigh)+1])
-xline(exp(xlow),'--r')
-xline(exp(xhigh),'--r')
-xline(exp(xhat),'--k')
-hold off
-xlabel('Liquid wealth to housing ratio $w=W/D$',Fontsize=fontsizeText,Interpreter='latex')
-ylabel('Share in Risky Asseet',Fontsize=fontsizeText,Interpreter='latex')
-title('Portfolio policy $\theta(w)$',Fontsize=fontsizeTitle,Interpreter='latex');
+fig = figure(6); 
+plot(exp(xgrid), expos ./ sigma, '-b', 'LineWidth', 2); hold on; grid on;
+plot(exp(xgrid),(r_risk-r)/sigma2/risk_aver*ones(size(xgrid)),'--b',LineWidth=1);
+
+ylims = ylim;  % apply y-axis limits *after* plotting
+
+% Vertical lines
+plot([exp(xlow), exp(xlow)], ylims, '--r', 'LineWidth', 1);
+plot([exp(xhigh), exp(xhigh)], ylims, '--r', 'LineWidth', 1);
+plot([exp(xhat), exp(xhat)], ylims, '--k', 'LineWidth', 1);
+xlim([exp(xlow) - 1, 16]);
+ylim([0.70 , 0.77]);
+hold off;
+
+xlabel('$w$', 'FontSize', fontsizeText, 'Interpreter', 'latex');
+ylabel('Share in Risky Asset', 'FontSize', fontsizeText, 'Interpreter', 'latex');
+title('Portfolio policy $\theta(w)$', 'FontSize', fontsizeTitle, 'Interpreter', 'latex');
 
 set(fig, 'PaperUnits', 'inches');
-set(fig, 'PaperPosition', [0 0 9.5/1.5 7.5/1.5]);  % 16:9 format
-print(fig, '.\Figures\FigPortfolio', '-dpng', '-r300');
+set(fig, 'PaperPosition', [0 0 9.5/1.5 7.5/1.5]);
+print(fig, '.\\Figures\\FigPortfolio', '-dpng', '-r300');
+
+
+%% Value function
+fig = figure(7); 
+plot(exp(xgrid), -log(-V), '-b', 'LineWidth', 2); hold on; grid on;
+%plot(exp(xgrid),(r_risk-r)/sigma2/risk_aver*ones(size(xgrid)),'--b',LineWidth=1);
+
+ylims = ylim;  % apply y-axis limits *after* plotting
+
+% Vertical lines
+plot([exp(xlow), exp(xlow)], ylims, '--r', 'LineWidth', 1);
+plot([exp(xhigh), exp(xhigh)], ylims, '--r', 'LineWidth', 1);
+plot([exp(xhat), exp(xhat)], ylims, '--k', 'LineWidth', 1);
+xlim([2, 8]);
+ylim([-12, -9]);
+hold off;
+
+xlabel('$w$', 'FontSize', fontsizeText, 'Interpreter', 'latex');
+ylabel('Value', 'FontSize', fontsizeText, 'Interpreter', 'latex');
+title('Value function $v(w)$', 'FontSize', fontsizeTitle, 'Interpreter', 'latex');
+
+set(fig, 'PaperUnits', 'inches');
+set(fig, 'PaperPosition', [0 0 9.5/1.5 7.5/1.5]);
+print(fig, '.\\Figures\\FigVal', '-dpng', '-r300');
