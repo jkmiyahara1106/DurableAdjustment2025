@@ -615,9 +615,13 @@ My framework is considerably harder, it has drift and volatility control
 \end_inset
 
  is state-dependent.
+
+\color red
  An inverse mapping cannot be found with CRRA utility.
  However, with a particular case of a robustness concerns problem an inverse
  mapping can be found.
+
+\color inherit
  The insight is that in this case, the relevant jump value is the jump of
  logarithms and this simplifies tractable marginal valuations a lot! The
  following short note shows this carefully.

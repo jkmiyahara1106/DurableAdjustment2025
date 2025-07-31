@@ -999,5 +999,31 @@ and it can be solved without any input from
 .
 \end_layout
 
+\begin_layout Paragraph
+Operationalize mapping.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{alignat*}{1}
+c: & \qquad\frac{\alpha}{c^{*}}-u\left(w\right)=0\\
+h: & \qquad h^{*}=\left(1-\gamma\right)\theta^{*}\sigma wu\left(w\right)\\
+\theta: & \qquad\left(r^{e}w+\sigma wh^{*}\right)u\left(w\right)+\left(\sigma w\right)^{2}\theta^{*}u^{\prime}\left(w\right)=0
+\end{alignat*}
+
+\end_inset
+
+subsituting distortion's solution into portfolio solution 
+\begin_inset Formula 
+\begin{alignat*}{1}
+\theta^{*}\sigma w= & \,\frac{r^{e}u\left(w\right)}{\sigma\left[\left(\gamma-1\right)u\left(w\right)^{2}-u^{\prime}\left(w\right)\right]}
+\end{alignat*}
+
+\end_inset
+
+
+\end_layout
+
 \end_body
 \end_document
